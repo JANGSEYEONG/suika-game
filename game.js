@@ -14,7 +14,7 @@ const FRUITS = [
 
 // 2. PIXI 앱 생성
 const GAME_WIDTH = 400;
-const GAME_HEIGHT = window.innerHeight;
+const GAME_HEIGHT = 600;
 const TOP_LINE_Y = 100; // 상한선 y좌표
 const app = new PIXI.Application({ width: GAME_WIDTH, height: GAME_HEIGHT, backgroundColor: 0x222222 });
 document.getElementById('pixi-canvas').appendChild(app.view);
@@ -28,7 +28,7 @@ app.stage.addChild(topLine);
 
 // 리사이즈 대응
 window.addEventListener('resize', () => {
-    app.renderer.resize(GAME_WIDTH, window.innerHeight);
+    app.renderer.resize(GAME_WIDTH, GAME_HEIGHT);
 });
 
 // 3. matter.js 엔진 생성
