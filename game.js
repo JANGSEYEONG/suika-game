@@ -123,6 +123,7 @@ app.ticker.add(() => {
         sprite.rotation = body.angle;
     });
 });
+let lastTimestamp = Date.now();
 Events.on(engine, 'afterUpdate', function() {
     // 바디-스프라이트 동기화
     fruits.forEach(fruit => {
@@ -136,15 +137,22 @@ Events.on(engine, 'afterUpdate', function() {
             fruitSprites.set(fruit, g);
         }
     });
-    // 게임 오버 체크 (상한선 기준)
+    // 게임 오버 체크 (상한선 기준, 시간 누적)
+    const now = Date.now();
+    const delta = Math.min((now - lastTimestamp), 100); // ms, 프레임 간격 보정
+    lastTimestamp = now;
     if (!gameOver) {
-        // 과일이 2개 이상일 때만 게임오버 체크
         if (fruits.length > 1) {
             for (let fruit of fruits) {
-                // 속도가 느리고, 상한선 위로 올라온 경우만 게임 오버
+                // 상한선 위에 있고, 속도가 느린 경우 누적 타이머 증가
                 if (fruit.speed < 0.2 && (fruit.position.y - FRUITS[fruit.fruitType].radius < TOP_LINE_Y)) {
-                    handleGameOver();
-                    break;
+                    fruit.overTopLineTime = (fruit.overTopLineTime || 0) + delta;
+                    if (fruit.overTopLineTime > 500) {
+                        handleGameOver();
+                        break;
+                    }
+                } else {
+                    fruit.overTopLineTime = 0;
                 }
             }
         }
