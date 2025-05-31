@@ -13,8 +13,18 @@ const FRUITS = [
 ];
 
 // 2. PIXI 앱 생성
-const app = new PIXI.Application({ width: 400, height: 600, backgroundColor: 0x222222 });
+const GAME_WIDTH = 400;
+const GAME_HEIGHT = 600;
+const TOP_LINE_Y = 100; // 상한선 y좌표
+const app = new PIXI.Application({ width: GAME_WIDTH, height: GAME_HEIGHT, backgroundColor: 0x222222 });
 document.getElementById('pixi-canvas').appendChild(app.view);
+
+// 상한선 시각화
+const topLine = new PIXI.Graphics();
+topLine.lineStyle(3, 0xff4b4b, 0.7);
+topLine.moveTo(0, TOP_LINE_Y);
+topLine.lineTo(GAME_WIDTH, TOP_LINE_Y);
+app.stage.addChild(topLine);
 
 // 3. matter.js 엔진 생성
 const { Engine, Runner, World, Bodies, Events } = Matter;
@@ -34,8 +44,8 @@ function renderFruitStages() {
     FRUITS.forEach((f, idx) => {
         const el = document.createElement('div');
         el.style.marginBottom = '16px';
-        el.innerHTML = `<svg width="40" height="40"><circle cx="20" cy="20" r="${f.radius}" fill="${PIXI.utils.hex2string(f.color)}" stroke="#fff" stroke-width="2"/></svg>
-        <div style="font-size:12px;color:#fff;">${f.name}<br><span style="color:#47ff47;">${f.score}</span></div>`;
+        el.innerHTML = `<svg width=\"40\" height=\"40\"><circle cx=\"20\" cy=\"20\" r=\"${f.radius}\" fill=\"${PIXI.utils.hex2string(f.color)}\" stroke=\"#fff\" stroke-width=\"2\"/></svg>
+        <div style=\"font-size:12px;color:#fff;\">${f.name}<br><span style=\"color:#47ff47;\">${f.score}</span></div>`;
         container.appendChild(el);
     });
 }
@@ -45,9 +55,9 @@ function renderNextFruit() {
     const container = document.getElementById('next-fruit');
     container.innerHTML = '';
     const f = FRUITS[nextFruitType];
-    container.innerHTML = `<div style="color:#fff;font-size:13px;">다음 과일</div>
-    <svg width="60" height="60"><circle cx="30" cy="30" r="${f.radius}" fill="${PIXI.utils.hex2string(f.color)}" stroke="#fff" stroke-width="2"/></svg>
-    <div style="color:#fff;font-size:14px;">${f.name}</div>`;
+    container.innerHTML = `<div style=\"color:#fff;font-size:13px;\">다음 과일</div>
+    <svg width=\"60\" height=\"60\"><circle cx=\"30\" cy=\"30\" r=\"${f.radius}\" fill=\"${PIXI.utils.hex2string(f.color)}\" stroke=\"#fff\" stroke-width=\"2\"/></svg>
+    <div style=\"color:#fff;font-size:14px;\">${f.name}</div>`;
 }
 
 // 7. 점수, 랭킹, 게임오버 등 기존 함수 유지
@@ -126,10 +136,10 @@ Events.on(engine, 'afterUpdate', function() {
             fruitSprites.set(fruit, g);
         }
     });
-    // 게임 오버 체크
+    // 게임 오버 체크 (상한선 기준)
     if (!gameOver) {
         for (let fruit of fruits) {
-            if (fruit.position.y - FRUITS[fruit.fruitType].radius < 0) {
+            if (fruit.position.y - FRUITS[fruit.fruitType].radius < TOP_LINE_Y) {
                 handleGameOver();
                 break;
             }
