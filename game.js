@@ -1,4 +1,4 @@
-// 개선된 수박 게임 (Suika Game)
+// 개선된 수박 게임 (Suika Game) - 합체 로직 강화
 // 마우스 위치에 과일이 따라다니고, 클릭 시 실제로 떨어짐
 // 바닥/과일 충돌 시 멈추고, 합쳐짐. 하단에 과일 단계 표시
 
@@ -21,7 +21,7 @@ const FRUITS = [
 
 let fruits = [];
 let fallingFruit = null;
-let isReadyToDrop = true; // 마우스 따라다니는 상태
+let isReadyToDrop = true;
 let score = 0;
 let gameOver = false;
 
@@ -52,7 +52,6 @@ function drawFruit(fruit) {
 }
 
 function drawStages() {
-    // 하단에 과일 단계 표시
     const y = canvas.height - 30;
     ctx.save();
     ctx.globalAlpha = 0.8;
@@ -88,11 +87,10 @@ function draw() {
 
 function update() {
     if (fallingFruit && !isReadyToDrop) {
-        fallingFruit.vy += 0.3; // 중력
+        fallingFruit.vy += 0.3;
         fallingFruit.x += fallingFruit.vx;
         fallingFruit.y += fallingFruit.vy;
 
-        // 벽 충돌
         if (fallingFruit.x - FRUITS[fallingFruit.type].radius < 0) {
             fallingFruit.x = FRUITS[fallingFruit.type].radius;
             fallingFruit.vx *= -0.5;
@@ -102,7 +100,6 @@ function update() {
             fallingFruit.vx *= -0.5;
         }
 
-        // 바닥 충돌
         if (fallingFruit.y + FRUITS[fallingFruit.type].radius >= canvas.height - 40) {
             fallingFruit.y = canvas.height - 40 - FRUITS[fallingFruit.type].radius;
             fruits.push(fallingFruit);
@@ -110,13 +107,11 @@ function update() {
             setTimeout(checkMerge, 10);
             setTimeout(spawnFruit, 20);
         } else {
-            // 다른 과일과 충돌
             for (const fruit of fruits) {
                 const dx = fruit.x - fallingFruit.x;
                 const dy = fruit.y - fallingFruit.y;
                 const dist = Math.sqrt(dx*dx + dy*dy);
                 if (dist < FRUITS[fruit.type].radius + FRUITS[fallingFruit.type].radius) {
-                    // 충돌
                     fallingFruit.y = fruit.y - FRUITS[fruit.type].radius - FRUITS[fallingFruit.type].radius;
                     fruits.push(fallingFruit);
                     fallingFruit = null;
@@ -131,14 +126,17 @@ function update() {
 
 function checkMerge() {
     let merged = false;
-    outer: for (let i = 0; i < fruits.length; i++) {
+    let toRemove = new Set();
+    let toAdd = [];
+    // 모든 쌍을 체크하여 합칠 수 있으면 합치기
+    for (let i = 0; i < fruits.length; i++) {
         for (let j = i + 1; j < fruits.length; j++) {
+            if (toRemove.has(i) || toRemove.has(j)) continue;
             if (fruits[i].type === fruits[j].type) {
                 const dx = fruits[i].x - fruits[j].x;
                 const dy = fruits[i].y - fruits[j].y;
                 const dist = Math.sqrt(dx*dx + dy*dy);
                 if (dist < FRUITS[fruits[i].type].radius + FRUITS[fruits[j].type].radius - 2) {
-                    // 합치기
                     const newType = fruits[i].type + 1;
                     if (newType < FRUITS.length) {
                         const newFruit = {
@@ -150,19 +148,23 @@ function checkMerge() {
                             radius: FRUITS[newType].radius,
                             merged: false
                         };
-                        fruits.splice(j, 1);
-                        fruits.splice(i, 1);
-                        fruits.push(newFruit);
+                        toRemove.add(i);
+                        toRemove.add(j);
+                        toAdd.push(newFruit);
                         score += FRUITS[newType].score;
                         scoreDiv.textContent = `점수: ${score}`;
                         merged = true;
-                        break outer;
                     }
                 }
             }
         }
     }
-    // 연속 합체
+    // 실제로 합치기 적용
+    if (toRemove.size > 0) {
+        fruits = fruits.filter((_, idx) => !toRemove.has(idx));
+        fruits = fruits.concat(toAdd);
+    }
+    // 연쇄 합체
     if (merged) setTimeout(checkMerge, 10);
     // 게임 오버 체크
     for (const fruit of fruits) {
