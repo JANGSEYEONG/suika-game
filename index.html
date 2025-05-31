@@ -8,6 +8,32 @@
         canvas { background: #222; display: block; margin: 0 auto; border: 2px solid #fff; }
         #score { font-size: 1.2em; margin: 10px; }
         #restart { margin: 10px; padding: 8px 16px; font-size: 1em; }
+        #ranking-board {
+            position: fixed;
+            top: 80px;
+            right: 40px;
+            width: 220px;
+            background: #111;
+            color: #fff;
+            border: 2px solid #47ff47;
+            border-radius: 12px;
+            padding: 12px;
+            z-index: 100;
+            text-align: left;
+        }
+        #ranking-board h2 {
+            font-size: 1.1em;
+            margin: 0 0 8px 0;
+            color: #47ff47;
+        }
+        #ranking-board ol {
+            padding-left: 20px;
+            margin: 0;
+        }
+        #ranking-board li {
+            font-size: 1em;
+            margin-bottom: 2px;
+        }
     </style>
     <link rel="icon" type="image/svg+xml" href="favicon.svg">
 </head>
@@ -16,6 +42,10 @@
     <div id="score">점수: 0</div>
     <canvas id="gameCanvas" width="400" height="600"></canvas>
     <button id="restart">다시 시작</button>
+    <div id="ranking-board">
+        <h2>🏆 랭킹 보드</h2>
+        <ol id="ranking-list"></ol>
+    </div>
     <script src="game.js"></script>
 </body>
 </html>
