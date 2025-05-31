@@ -23,22 +23,15 @@ let isReadyToDrop = true;
 let score = 0;
 let gameOver = false;
 
-let lastMouseX = null; // 마지막 마우스 위치 저장
-
 function randomFruit() {
     // 0~4(체리~사과) 중 랜덤
     return Math.floor(Math.random() * 5);
 }
 
 function spawnFruit() {
-    let x = canvas.width / 2;
-    if (lastMouseX !== null) {
-        // 마우스가 캔버스 위에 있었던 적이 있다면 그 위치로
-        x = Math.max(FRUITS[0].radius, Math.min(canvas.width - FRUITS[0].radius, lastMouseX));
-    }
     fallingFruit = {
         type: randomFruit(),
-        x: x,
+        x: canvas.width / 2,
         y: 40,
         vx: 0,
         vy: 0,
@@ -109,6 +102,26 @@ function update() {
 
         if (fallingFruit.y + FRUITS[fallingFruit.type].radius >= canvas.height - 40) {
             fallingFruit.y = canvas.height - 40 - FRUITS[fallingFruit.type].radius;
+            // 바닥에 닿았을 때 좌우로 빈 공간이 있으면 굴러가게
+            let leftSpace = fallingFruit.x - fallingFruit.radius;
+            let rightSpace = canvas.width - (fallingFruit.x + fallingFruit.radius);
+            if (leftSpace > 10 && rightSpace > 10) {
+                // 양쪽 다 여유가 있으면 랜덤하게 좌우로 굴림
+                fallingFruit.vx = (Math.random() > 0.5 ? 1 : -1) * (Math.random() * 2 + 1);
+            } else if (leftSpace > 10) {
+                fallingFruit.vx = -1 * (Math.random() * 2 + 1);
+            } else if (rightSpace > 10) {
+                fallingFruit.vx = (Math.random() * 2 + 1);
+            } else {
+                fallingFruit.vx = 0;
+            }
+            // 마찰 효과로 점점 멈추게
+            fallingFruit.vy *= 0.5;
+            if (Math.abs(fallingFruit.vx) > 0.2) {
+                // 아직 충분히 굴러갈 힘이 있으면 멈추지 않고 계속 update
+                fallingFruit.y += 1; // 살짝 더 아래로
+                return;
+            }
             fruits.push(fallingFruit);
             fallingFruit = null;
             setTimeout(checkMerge, 10);
@@ -132,6 +145,8 @@ function update() {
 }
 
 function checkMerge() {
+    // UI 즉시 갱신
+    draw();
     let merged = false;
     let toRemove = new Set();
     let toAdd = [];
@@ -168,6 +183,7 @@ function checkMerge() {
     if (toRemove.size > 0) {
         fruits = fruits.filter((_, idx) => !toRemove.has(idx));
         fruits = fruits.concat(toAdd);
+        draw(); // 합쳐진 직후 UI 갱신
     }
     if (merged) setTimeout(checkMerge, 10);
     for (const fruit of fruits) {
@@ -215,8 +231,6 @@ canvas.addEventListener('mousemove', (e) => {
         x = Math.max(FRUITS[fallingFruit.type].radius, Math.min(canvas.width - FRUITS[fallingFruit.type].radius, x));
         fallingFruit.x = x;
     }
-    // 마우스가 캔버스 위에 있을 때마다 위치 저장
-    lastMouseX = e.clientX - canvas.getBoundingClientRect().left;
 });
 
 canvas.addEventListener('click', (e) => {
