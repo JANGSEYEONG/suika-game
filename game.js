@@ -139,7 +139,8 @@ Events.on(engine, 'afterUpdate', function() {
     // 게임 오버 체크 (상한선 기준)
     if (!gameOver) {
         for (let fruit of fruits) {
-            if (fruit.position.y - FRUITS[fruit.fruitType].radius < TOP_LINE_Y) {
+            // 속도가 느리고, 상한선 위로 올라온 경우만 게임 오버
+            if (fruit.speed < 0.2 && (fruit.position.y - FRUITS[fruit.fruitType].radius < TOP_LINE_Y)) {
                 handleGameOver();
                 break;
             }
