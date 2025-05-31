@@ -1,74 +1,62 @@
-// matter.js 기반 완전 리팩토링 버전
-const { Engine, Render, Runner, World, Bodies, Body, Events } = Matter;
+// pixi.js + matter.js 기반 완전 리팩토링 버전
+// 1. 데이터 정의
+const FRUITS = [
+    { name: '체리', color: 0xff4b4b, radius: 18, score: 1 },
+    { name: '딸기', color: 0xff7f50, radius: 22, score: 2 },
+    { name: '포도', color: 0xa259e6, radius: 26, score: 4 },
+    { name: '귤', color: 0xffb347, radius: 30, score: 8 },
+    { name: '사과', color: 0xffec47, radius: 36, score: 16 },
+    { name: '배', color: 0xbfff47, radius: 44, score: 32 },
+    { name: '복숭아', color: 0xffb6b9, radius: 54, score: 64 },
+    { name: '멜론', color: 0x47ffd1, radius: 66, score: 128 },
+    { name: '수박', color: 0x47ff47, radius: 80, score: 256 }
+];
 
+// 2. PIXI 앱 생성
+const app = new PIXI.Application({ width: 400, height: 600, backgroundColor: 0x222222 });
+document.getElementById('pixi-canvas').appendChild(app.view);
+
+// 3. matter.js 엔진 생성
+const { Engine, Runner, World, Bodies, Events } = Matter;
 const engine = Engine.create();
 const world = engine.world;
 
-const canvas = document.getElementById('gameCanvas');
-const render = Render.create({
-    canvas: canvas,
-    engine: engine,
-    options: {
-        width: 400,
-        height: 600,
-        wireframes: false,
-        background: "#222"
-    }
-});
-
-Render.run(render);
-const runner = Runner.create();
-Runner.run(runner, engine);
-
-// 바닥, 벽 생성
-World.add(world, [
-    Bodies.rectangle(200, 600, 400, 40, { isStatic: true }), // 바닥
-    Bodies.rectangle(0, 300, 40, 600, { isStatic: true }),   // 왼쪽 벽
-    Bodies.rectangle(400, 300, 40, 600, { isStatic: true })  // 오른쪽 벽
-]);
-
-// 과일 데이터
-const FRUITS = [
-    { name: '체리', color: '#ff4b4b', radius: 18, score: 1 },
-    { name: '딸기', color: '#ff7f50', radius: 22, score: 2 },
-    { name: '포도', color: '#a259e6', radius: 26, score: 4 },
-    { name: '귤', color: '#ffb347', radius: 30, score: 8 },
-    { name: '사과', color: '#ffec47', radius: 36, score: 16 },
-    { name: '배', color: '#bfff47', radius: 44, score: 32 },
-    { name: '복숭아', color: '#ffb6b9', radius: 54, score: 64 },
-    { name: '멜론', color: '#47ffd1', radius: 66, score: 128 },
-    { name: '수박', color: '#47ff47', radius: 80, score: 256 }
-];
-
+// 4. 게임 상태 변수
 let fruits = [];
 let score = 0;
 let gameOver = false;
+let nextFruitType = getRandomFruitType();
 
-function randomFruitType() {
-    return Math.floor(Math.random() * 5); // 0~4
-}
-
-function spawnFruit(type, x = 200, y = 40) {
-    const fruit = Bodies.circle(x, y, FRUITS[type].radius, {
-        restitution: 0.3,
-        render: { fillStyle: FRUITS[type].color }
+// 5. 과일 단계 UI
+function renderFruitStages() {
+    const container = document.getElementById('fruit-stages');
+    container.innerHTML = '';
+    FRUITS.forEach((f, idx) => {
+        const el = document.createElement('div');
+        el.style.marginBottom = '16px';
+        el.innerHTML = `<svg width="40" height="40"><circle cx="20" cy="20" r="${f.radius}" fill="${PIXI.utils.hex2string(f.color)}" stroke="#fff" stroke-width="2"/></svg>
+        <div style="font-size:12px;color:#fff;">${f.name}<br><span style="color:#47ff47;">${f.score}</span></div>`;
+        container.appendChild(el);
     });
-    fruit.fruitType = type;
-    fruit.isFruit = true;
-    World.add(world, fruit);
-    fruits.push(fruit);
-    return fruit;
 }
 
-// 점수 UI
+// 6. 다음 과일 미리보기 UI
+function renderNextFruit() {
+    const container = document.getElementById('next-fruit');
+    container.innerHTML = '';
+    const f = FRUITS[nextFruitType];
+    container.innerHTML = `<div style="color:#fff;font-size:13px;">다음 과일</div>
+    <svg width="60" height="60"><circle cx="30" cy="30" r="${f.radius}" fill="${PIXI.utils.hex2string(f.color)}" stroke="#fff" stroke-width="2"/></svg>
+    <div style="color:#fff;font-size:14px;">${f.name}</div>`;
+}
+
+// 7. 점수, 랭킹, 게임오버 등 기존 함수 유지
 const scoreDiv = document.getElementById('score');
+const rankingList = document.getElementById('ranking-list');
 function updateScore(add) {
     score += add;
     scoreDiv.textContent = `점수: ${score}`;
 }
-
-// 랭킹 보드
-const rankingList = document.getElementById('ranking-list');
 function saveRanking(name, score) {
     let rankings = JSON.parse(localStorage.getItem('suika-rankings') || '[]');
     rankings.push({ name, score });
@@ -85,8 +73,6 @@ function updateRankingBoard() {
         rankingList.appendChild(li);
     });
 }
-
-// 게임 오버
 function handleGameOver() {
     if (gameOver) return;
     gameOver = true;
@@ -98,33 +84,65 @@ function handleGameOver() {
     alert('점수: ' + score);
 }
 
-// 마우스 클릭 시 과일 떨어뜨리기
-canvas.addEventListener('click', (e) => {
-    if (gameOver) return;
-    const rect = canvas.getBoundingClientRect();
-    const x = e.clientX - rect.left;
-    const type = randomFruitType();
-    spawnFruit(type, x, 40);
-});
+// 8. matter.js: 바닥, 벽
+World.add(world, [
+    Bodies.rectangle(200, 600, 400, 40, { isStatic: true }),
+    Bodies.rectangle(0, 300, 40, 600, { isStatic: true }),
+    Bodies.rectangle(400, 300, 40, 600, { isStatic: true })
+]);
 
-document.getElementById('restart').addEventListener('click', () => {
-    // 월드의 모든 바디 삭제 (벽, 바닥 제외)
-    Matter.Composite.allBodies(world).forEach(b => {
-        if (b.isFruit) World.remove(world, b);
+// 9. pixi.js로 과일 렌더링, matter.js로 물리엔진 동작
+function spawnFruit(type, x = 200, y = 40) {
+    const fruit = Bodies.circle(x, y, FRUITS[type].radius, {
+        restitution: 0.3,
+        render: { fillStyle: FRUITS[type].color }
     });
-    fruits = [];
-    score = 0;
-    gameOver = false;
-    updateScore(0);
+    fruit.fruitType = type;
+    fruit.isFruit = true;
+    World.add(world, fruit);
+    fruits.push(fruit);
+    return fruit;
+}
+
+// 10. pixi.js에서 matter.js 바디를 렌더링
+const fruitSprites = new Map();
+app.ticker.add(() => {
+    fruitSprites.forEach((sprite, body) => {
+        sprite.x = body.position.x;
+        sprite.y = body.position.y;
+        sprite.rotation = body.angle;
+    });
+});
+Events.on(engine, 'afterUpdate', function() {
+    // 바디-스프라이트 동기화
+    fruits.forEach(fruit => {
+        if (!fruitSprites.has(fruit)) {
+            const g = new PIXI.Graphics();
+            g.beginFill(FRUITS[fruit.fruitType].color);
+            g.lineStyle(2, 0xffffff);
+            g.drawCircle(0, 0, FRUITS[fruit.fruitType].radius);
+            g.endFill();
+            app.stage.addChild(g);
+            fruitSprites.set(fruit, g);
+        }
+    });
+    // 게임 오버 체크
+    if (!gameOver) {
+        for (let fruit of fruits) {
+            if (fruit.position.y - FRUITS[fruit.fruitType].radius < 0) {
+                handleGameOver();
+                break;
+            }
+        }
+    }
 });
 
-// 합치기 로직 (충돌 감지)
+// 11. 합치기 로직 (충돌 감지)
 Events.on(engine, 'collisionStart', function(event) {
     const pairs = event.pairs;
     for (let pair of pairs) {
         const a = pair.bodyA, b = pair.bodyB;
         if (a.isFruit && b.isFruit && a.fruitType === b.fruitType && !gameOver) {
-            // 두 과일이 같은 타입이면 합치기
             const newType = a.fruitType + 1;
             if (newType < FRUITS.length) {
                 const x = (a.position.x + b.position.x) / 2;
@@ -132,24 +150,49 @@ Events.on(engine, 'collisionStart', function(event) {
                 World.remove(world, a);
                 World.remove(world, b);
                 fruits = fruits.filter(f => f !== a && f !== b);
-                spawnFruit(newType, x, y - FRUITS[newType].radius); // 살짝 위에 생성
+                app.stage.removeChild(fruitSprites.get(a));
+                app.stage.removeChild(fruitSprites.get(b));
+                fruitSprites.delete(a);
+                fruitSprites.delete(b);
+                spawnFruit(newType, x, y - FRUITS[newType].radius);
                 updateScore(FRUITS[newType].score);
             }
         }
     }
 });
 
-// 게임 오버 체크 (과일이 화면 위로 올라가면)
-Events.on(engine, 'afterUpdate', function() {
+// 12. 마우스 클릭 시 다음 과일 떨어뜨리기
+app.view.addEventListener('click', (e) => {
     if (gameOver) return;
-    for (let fruit of fruits) {
-        if (fruit.position.y - FRUITS[fruit.fruitType].radius < 0) {
-            handleGameOver();
-            break;
-        }
-    }
+    const rect = app.view.getBoundingClientRect();
+    const x = e.clientX - rect.left;
+    spawnFruit(nextFruitType, x, 40);
+    nextFruitType = getRandomFruitType();
+    renderNextFruit();
 });
 
-// 초기화
+document.getElementById('restart').addEventListener('click', () => {
+    Matter.Composite.allBodies(world).forEach(b => {
+        if (b.isFruit) World.remove(world, b);
+    });
+    fruits = [];
+    fruitSprites.forEach(sprite => app.stage.removeChild(sprite));
+    fruitSprites.clear();
+    score = 0;
+    gameOver = false;
+    updateScore(0);
+});
+
+function getRandomFruitType() {
+    return Math.floor(Math.random() * 5);
+}
+
+// 13. 초기화
+renderFruitStages();
+renderNextFruit();
 updateScore(0);
 updateRankingBoard();
+
+// 14. matter.js 루프 실행
+const runner = Runner.create();
+Runner.run(runner, engine);
