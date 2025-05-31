@@ -23,15 +23,22 @@ let isReadyToDrop = true;
 let score = 0;
 let gameOver = false;
 
+let lastMouseX = null; // 마지막 마우스 위치 저장
+
 function randomFruit() {
     // 0~4(체리~사과) 중 랜덤
     return Math.floor(Math.random() * 5);
 }
 
 function spawnFruit() {
+    let x = canvas.width / 2;
+    if (lastMouseX !== null) {
+        // 마우스가 캔버스 위에 있었던 적이 있다면 그 위치로
+        x = Math.max(FRUITS[0].radius, Math.min(canvas.width - FRUITS[0].radius, lastMouseX));
+    }
     fallingFruit = {
         type: randomFruit(),
-        x: canvas.width / 2,
+        x: x,
         y: 40,
         vx: 0,
         vy: 0,
@@ -208,6 +215,8 @@ canvas.addEventListener('mousemove', (e) => {
         x = Math.max(FRUITS[fallingFruit.type].radius, Math.min(canvas.width - FRUITS[fallingFruit.type].radius, x));
         fallingFruit.x = x;
     }
+    // 마우스가 캔버스 위에 있을 때마다 위치 저장
+    lastMouseX = e.clientX - canvas.getBoundingClientRect().left;
 });
 
 canvas.addEventListener('click', (e) => {
