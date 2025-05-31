@@ -138,11 +138,14 @@ Events.on(engine, 'afterUpdate', function() {
     });
     // 게임 오버 체크 (상한선 기준)
     if (!gameOver) {
-        for (let fruit of fruits) {
-            // 속도가 느리고, 상한선 위로 올라온 경우만 게임 오버
-            if (fruit.speed < 0.2 && (fruit.position.y - FRUITS[fruit.fruitType].radius < TOP_LINE_Y)) {
-                handleGameOver();
-                break;
+        // 과일이 2개 이상일 때만 게임오버 체크
+        if (fruits.length > 1) {
+            for (let fruit of fruits) {
+                // 속도가 느리고, 상한선 위로 올라온 경우만 게임 오버
+                if (fruit.speed < 0.2 && (fruit.position.y - FRUITS[fruit.fruitType].radius < TOP_LINE_Y)) {
+                    handleGameOver();
+                    break;
+                }
             }
         }
     }
@@ -178,6 +181,7 @@ app.view.addEventListener('click', (e) => {
     const rect = app.view.getBoundingClientRect();
     const x = e.clientX - rect.left;
     spawnFruit(nextFruitType, x, 40);
+    // 다음에 떨어질 과일을 미리 정해서 보여주기
     nextFruitType = getRandomFruitType();
     renderNextFruit();
 });
