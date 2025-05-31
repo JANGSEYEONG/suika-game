@@ -1,5 +1,6 @@
-// 간단한 수박 게임 (Suika Game) 구현
-// 과일이 떨어져 쌓이고, 같은 과일이 합쳐지면 더 큰 과일로 변함
+// 개선된 수박 게임 (Suika Game)
+// 마우스 위치에 과일이 따라다니고, 클릭 시 실제로 떨어짐
+// 바닥/과일 충돌 시 멈추고, 합쳐짐. 하단에 과일 단계 표시
 
 const canvas = document.getElementById('gameCanvas');
 const ctx = canvas.getContext('2d');
@@ -20,6 +21,7 @@ const FRUITS = [
 
 let fruits = [];
 let fallingFruit = null;
+let isReadyToDrop = true; // 마우스 따라다니는 상태
 let score = 0;
 let gameOver = false;
 
@@ -37,6 +39,7 @@ function spawnFruit() {
         radius: FRUITS[0].radius,
         merged: false
     };
+    isReadyToDrop = true;
 }
 
 function drawFruit(fruit) {
@@ -48,16 +51,43 @@ function drawFruit(fruit) {
     ctx.stroke();
 }
 
+function drawStages() {
+    // 하단에 과일 단계 표시
+    const y = canvas.height - 30;
+    ctx.save();
+    ctx.globalAlpha = 0.8;
+    ctx.fillStyle = '#222';
+    ctx.fillRect(0, y - 20, canvas.width, 40);
+    ctx.globalAlpha = 1.0;
+    const gap = 10;
+    let x = gap;
+    for (let i = 0; i < FRUITS.length; i++) {
+        ctx.beginPath();
+        ctx.arc(x + FRUITS[i].radius, y, FRUITS[i].radius, 0, Math.PI * 2);
+        ctx.fillStyle = FRUITS[i].color;
+        ctx.fill();
+        ctx.strokeStyle = '#fff';
+        ctx.stroke();
+        ctx.fillStyle = '#222';
+        ctx.font = '12px sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillText(FRUITS[i].name, x + FRUITS[i].radius, y + FRUITS[i].radius + 10);
+        x += FRUITS[i].radius * 2 + gap;
+    }
+    ctx.restore();
+}
+
 function draw() {
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     for (const fruit of fruits) {
         drawFruit(fruit);
     }
     if (fallingFruit) drawFruit(fallingFruit);
+    drawStages();
 }
 
 function update() {
-    if (fallingFruit) {
+    if (fallingFruit && !isReadyToDrop) {
         fallingFruit.vy += 0.3; // 중력
         fallingFruit.x += fallingFruit.vx;
         fallingFruit.y += fallingFruit.vy;
@@ -73,12 +103,12 @@ function update() {
         }
 
         // 바닥 충돌
-        if (fallingFruit.y + FRUITS[fallingFruit.type].radius >= canvas.height) {
-            fallingFruit.y = canvas.height - FRUITS[fallingFruit.type].radius;
+        if (fallingFruit.y + FRUITS[fallingFruit.type].radius >= canvas.height - 40) {
+            fallingFruit.y = canvas.height - 40 - FRUITS[fallingFruit.type].radius;
             fruits.push(fallingFruit);
             fallingFruit = null;
-            checkMerge();
-            spawnFruit();
+            setTimeout(checkMerge, 10);
+            setTimeout(spawnFruit, 20);
         } else {
             // 다른 과일과 충돌
             for (const fruit of fruits) {
@@ -90,8 +120,8 @@ function update() {
                     fallingFruit.y = fruit.y - FRUITS[fruit.type].radius - FRUITS[fallingFruit.type].radius;
                     fruits.push(fallingFruit);
                     fallingFruit = null;
-                    checkMerge();
-                    spawnFruit();
+                    setTimeout(checkMerge, 10);
+                    setTimeout(spawnFruit, 20);
                     break;
                 }
             }
@@ -101,7 +131,7 @@ function update() {
 
 function checkMerge() {
     let merged = false;
-    for (let i = 0; i < fruits.length; i++) {
+    outer: for (let i = 0; i < fruits.length; i++) {
         for (let j = i + 1; j < fruits.length; j++) {
             if (fruits[i].type === fruits[j].type) {
                 const dx = fruits[i].x - fruits[j].x;
@@ -126,25 +156,26 @@ function checkMerge() {
                         score += FRUITS[newType].score;
                         scoreDiv.textContent = `점수: ${score}`;
                         merged = true;
-                        break;
+                        break outer;
                     }
                 }
             }
         }
-        if (merged) break;
     }
+    // 연속 합체
+    if (merged) setTimeout(checkMerge, 10);
     // 게임 오버 체크
     for (const fruit of fruits) {
         if (fruit.y - FRUITS[fruit.type].radius < 0) {
             gameOver = true;
-            alert('게임 오버!\n점수: ' + score);
+            setTimeout(() => { alert('게임 오버!\n점수: ' + score); }, 100);
             break;
         }
     }
 }
 
 canvas.addEventListener('mousemove', (e) => {
-    if (fallingFruit && !gameOver) {
+    if (fallingFruit && isReadyToDrop && !gameOver) {
         const rect = canvas.getBoundingClientRect();
         let x = e.clientX - rect.left;
         x = Math.max(FRUITS[fallingFruit.type].radius, Math.min(canvas.width - FRUITS[fallingFruit.type].radius, x));
@@ -153,7 +184,8 @@ canvas.addEventListener('mousemove', (e) => {
 });
 
 canvas.addEventListener('click', (e) => {
-    if (fallingFruit && fallingFruit.vy === 0 && !gameOver) {
+    if (fallingFruit && isReadyToDrop && !gameOver) {
+        isReadyToDrop = false;
         fallingFruit.vy = 2;
     }
 });
